@@ -35,4 +35,4 @@ def add_tuple(tuple_a=(), tuple_b=()):
 
     # parallel iteration in tuple comprehension
     sum_of_tuple = tuple(sum(item) for item in zip(tuple_a, tuple_b))
-    return sum_of_tuple#!/usr/bin/python3
+    return sum_of_tuple
