@@ -1,103 +1,159 @@
 #!/usr/bin/python3
+"""101-nqueens finds all possible solutions the N queens puzzle, including
+translations and reflections.
 
-"""Defines a Rectangle class."""
+Attempted virtual backtracking without recursion. In local tests process will
+start to slow down visibly for N > 8, and is successful up to N = 11 but
+will be killed if used for N > 11. Recursion could allow for a lighter weight
+process, but it's not yet apparent to this student how to retain a record of
+which solutions are already derived with that method.
+
+Attributes:
+    N (int): base number of queens, and length of board side in piece positions
+    candidates (list) of (list) of (list) of (int): list of all successful
+        solutions for given amount of columns checked
+
+"""
+from sys import argv
+
+if len(argv) is not 2:
+    print('Usage: nqueens N')
+    exit(1)
+
+if not argv[1].isdigit():
+    print('N must be a number')
+    exit(1)
+
+N = int(argv[1])
+
+if N < 4:
+    print('N must be at least 4')
+    exit(1)
 
 
-class Rectangle:
-    """Represent a rectangle.
-    Attributes:
-        number_of_instances (int): The number of Rectangle instances.
-        print_symbol (any): The symbol used for string representation.
+def board_column_gen(board=[]):
+    """Adds a column of zeroes to the right of any board about to be tested for
+    queen arrangements in that column.
+
+    Args:
+        board (list) of (list) of (int): 2D list of ints, only as wide as
+        needed to test the rightmost column for queen conflicts.
+
+    Returns:
+        modified 2D list
+
     """
+    if len(board):
+        for row in board:
+            row.append(0)
+    else:
+        for row in range(N):
+            board.append([0])
+    return board
 
-    number_of_instances = 0
-    print_symbol = "#"
 
-    def __init__(self, width=0, height=0):
-        """Initialize a new Rectangle.
-        Args:
-            width (int): The width of the new rectangle.
-            height (int): The height of the new rectangle.
-        """
-        type(self).number_of_instances += 1
-        self.width = width
-        self.height = height
+def add_queen(board, row, col):
+    """Sets "queen," or 1, to coordinates given in board.
 
-    @property
-    def width(self):
-        """Get/set the width of the Rectangle."""
-        return self.__width
+    Args:
+        board (list) of (list) of (int): 2D list of ints, only as wide as
+            needed to test the rightmost column for queen conflicts.
+        row (int): first dimension index
+        col (int): second dimension index
 
-    @width.setter
-    def width(self, value):
-        if not isinstance(value, int):
-            raise TypeError("width must be an integer")
-        if value < 0:
-            raise ValueError("width must be >= 0")
-        self.__width = value
+    """
+    board[row][col] = 1
 
-    @property
-    def height(self):
-        """Get/set the height of the Rectangle."""
-        return self.__height
 
-    @height.setter
-    def height(self, value):
-        if not isinstance(value, int):
-            raise TypeError("height must be an integer")
-        if value < 0:
-            raise ValueError("height must be >= 0")
-        self.__height = value
+def new_queen_safe(board, row, col):
+    """For the board given, checks that for a new queen placed in the rightmost
+    column, there are no other "queen"s, or 1 values, in the martix to the
+    left, and diagonally up-left and down-left.
 
-    def area(self):
-        """Return the area of the Rectangle."""
-        return (self.__width * self.__height)
+    Args:
+        board (list) of (list) of (int): 2D list of ints, only as wide as
+            needed to test the rightmost column for queen conflicts.
+        row (int): first dimension index
+        col (int): second dimension index
 
-    def perimeter(self):
-        """Return the perimeter of the Rectangle."""
-        if self.__width == 0 or self.__height == 0:
-            return (0)
-        return ((self.__width * 2) + (self.__height * 2))
+    Returns:
+        True if no left side conflicts found for new queen, or False if a
+    conflict is found.
 
-    @staticmethod
-    def bigger_or_equal(rect_1, rect_2):
-        """Return the Rectangle with the greater area.
-        Args:
-            rect_1 (Rectangle): The first Rectangle.
-            rect_2 (Rectangle): The second Rectangle.
-        Raises:
-            TypeError: If either of rect_1 or rect_2 is not a Rectangle.
-        """
-        if not isinstance(rect_1, Rectangle):
-            raise TypeError("rect_1 must be an instance of Rectangle")
-        if not isinstance(rect_2, Rectangle):
-            raise TypeError("rect_2 must be an instance of Rectangle")
-        if rect_1.area() >= rect_2.area():
-            return (rect_1)
-        return (rect_2)
+    """
+    x = row
+    y = col
 
-    def __str__(self):
-        """Return the printable representation of the Rectangle.
-        Represents the rectangle with the # character.
-        """
-        if self.__width == 0 or self.__height == 0:
-            return ("")
+    for i in range(1, N):
+        if (y - i) >= 0:
+            # check up-left diagonal
+            if (x - i) >= 0:
+                if board[x - i][y - i]:
+                    return False
+            # check left
+            if board[x][y - i]:
+                return False
+            # check down-left diagonal
+            if (x + i) < N:
+                if board[x + i][y - i]:
+                    return False
+    return True
 
-        rect = []
-        for i in range(self.__height):
-            [rect.append(str(self.print_symbol)) for j in range(self.__width)]
-            if i != self.__height - 1:
-                rect.append("\n")
-        return ("".join(rect))
 
-    def __repr__(self):
-        """Return the string representation of the Rectangle."""
-        rect = "Rectangle(" + str(self.__width)
-        rect += ", " + str(self.__height) + ")"
-        return (rect)
+def coordinate_format(candidates):
+    """Converts a board (matrix of 1 and 0) into a series of row/column
+    indicies of each queen/1.
 
-    def __del__(self):
-        """Print a message for every deletion of a Rectangle."""
-        type(self).number_of_instances -= 1
-        print("Bye rectangle...")
+    Args:
+    candidates (list) of (list) of (list) of (int): list of all successful
+        solutions for amount of columns last checked
 
+    Attributes:
+        holberton (list) of (list) of (int): each member list contains the row
+    column number for each queen found
+
+    Returns:
+        holberton, the list of coordinates
+
+    """
+    holberton = []
+    for x, attempt in enumerate(candidates):
+        holberton.append([])
+        for i, row in enumerate(attempt):
+            holberton[x].append([])
+            for j, col in enumerate(row):
+                if col:
+                    holberton[x][i].append(i)
+                    holberton[x][i].append(j)
+    return holberton
+
+# init candidates list with first column of 0s
+candidates = []
+candidates.append(board_column_gen())
+
+# proceed column by column, testing the rightmost
+for col in range(N):
+    # start a new generation of the candidate list for every round of testing
+    new_candidates = []
+    # test each candidate from previous round, at current column
+    for matrix in candidates:
+        # for every row in that candidate's rightmost column
+        for row in range(N):
+            # are there any conflicts in placing a queen at those coordinates?
+            if new_queen_safe(matrix, row, col):
+                # no? then create a "child" (copy) of that candidate
+                temp = [line[:] for line in matrix]
+                # place a queen in that position
+                add_queen(temp, row, col)
+                # and unless you're in the last round of testing,
+                if col < N - 1:
+                    # add a new column of 0s on the right for the next round
+                    board_column_gen(temp)
+                # add that new candidate to this round's list of successes
+                new_candidates.append(temp)
+    # when finished with the round, discard the "parent" candidates
+    candidates = new_candidates
+
+# format results to match assignment output
+for item in coordinate_format(candidates):
+    print(item)
